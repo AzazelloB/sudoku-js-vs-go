@@ -345,18 +345,13 @@ const findHiddenSingle = (cells) => {
     if (boxWithOne) {
       const { col, row } = boxWithOne[1];
       return {
-        found: true,
         index: col + row * cellsInColumn,
         value: number,
       };
     }
   }
 
-  return {
-    found: false,
-    index: null,
-    value: null,
-  };
+  return null;
 };
 
 const findNakedSingle = (cells) => {
@@ -410,22 +405,13 @@ const findNakedSingle = (cells) => {
 
     if (possible.length === 1) {
       return {
-        found: true,
         index,
         value: possible[0],
       };
     }
   }
 
-  return {
-    found: false,
-    index: null,
-    value: null,
-  };
-};
-
-const findIntersection = (cells) => {
-    
+  return null;
 };
 
 const backtrack = (rules, meta, cells, i = 0) => {
@@ -458,18 +444,20 @@ const backtrack = (rules, meta, cells, i = 0) => {
 const solve = (rules, meta, cells) => {
   const solved = cells.slice();
 
+  // TODO need to keep track of candidates
+  // one finder won't necessarily find a single digit
+  // but mupltiple can reduce the candidates to a single digit
   let result;
   do {
     result = findHiddenSingle(solved)
-          || findNakedSingle(solved)
-          || findIntersection(solved);
+          || findNakedSingle(solved);
 
-    if (result.found) {
+    if (result) {
       solved[result.index] = result.value;
     }
-  } while (result.found);
+  } while (result);
 
-  // backtrack(rules, meta, solved);
+  backtrack(rules, meta, solved);
 
   return solved;
 };

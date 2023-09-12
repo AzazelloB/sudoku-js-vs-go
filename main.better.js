@@ -275,7 +275,7 @@ const isValid = (rules, meta, cells, number, index) => {
   return true;
 };
 
-const findHiddenSingle = (cells) => {
+const findHiddenSingle = (candidates) => {
   const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   for (const number of numbers) {
@@ -286,7 +286,13 @@ const findHiddenSingle = (cells) => {
       for (let j = 0; j < cellsInRow; j++) {
         const index = i + j * cellsInColumn;
 
-        if (cells[index] === number) {
+        if (candidates[index].length !== 1) {
+          continue;
+        }
+
+        const value = candidates[index][0];
+
+        if (value === number) {
           seenInCol.push(i);
           seenInRow.push(j);
         }
@@ -303,7 +309,7 @@ const findHiddenSingle = (cells) => {
         const row = avaliableInRow[j];
         const index = col + row * cellsInColumn;
 
-        if (cells[index] !== null) {
+        if (candidates[index].length === 1) {
           continue;
         }
 
@@ -316,7 +322,13 @@ const findHiddenSingle = (cells) => {
           for (let j = boxStartCol; j < boxEndCol; j++) {
             const boxIndex = i * cellsInRow + j;
 
-            if (cells[boxIndex] === number) {
+            if (candidates[boxIndex].length !== 1) {
+              continue;
+            }
+
+            const value = candidates[boxIndex][0];
+
+            if (value === number) {
               continue loop;
             }
           }
@@ -354,9 +366,9 @@ const findHiddenSingle = (cells) => {
   return null;
 };
 
-const findNakedSingle = (cells) => {
-  for (let index = 0; index < cells.length; index++) {
-    if (cells[index] !== null) {
+const findNakedSingle = (candidates) => {
+  for (let index = 0; index < candidates.length; index++) {
+    if (candidates[index].length === 1) {
       continue;
     }
 
@@ -374,11 +386,14 @@ const findNakedSingle = (cells) => {
         const rowIndex = row * cellsInRow + i;
         const colIndex = col + i * cellsInRow;
 
-        if (rowIndex !== index && cells[rowIndex] === number) {
+        const rowValue = candidates[rowIndex].length === 1 ? candidates[rowIndex][0] : -1;
+        const colValue = candidates[colIndex].length === 1 ? candidates[colIndex][0] : -1;
+
+        if (rowIndex !== index && rowValue === number) {
           continue avLoop;
         }
 
-        if (colIndex !== index && cells[colIndex] === number) {
+        if (colIndex !== index && colValue === number) {
           continue avLoop;
         }
       }
@@ -394,7 +409,9 @@ const findNakedSingle = (cells) => {
         for (let j = boxStartCol; j < boxEndCol; j++) {
           const boxIndex = i * cellsInRow + j;
 
-          if (boxIndex !== index && cells[boxIndex] === number) {
+          const boxValue = candidates[boxIndex].length === 1 ? candidates[boxIndex][0] : -1;
+
+          if (boxIndex !== index && boxValue === number) {
             continue avLoop;
           }
         }
@@ -441,21 +458,107 @@ const backtrack = (rules, meta, cells, i = 0) => {
   return false;
 };
 
-const solve = (rules, meta, cells) => {
-  const solved = cells.slice();
+const intersection = (candidates) => {
 
-  // TODO need to keep track of candidates
-  // one finder won't necessarily find a single digit
-  // but mupltiple can reduce the candidates to a single digit
+};
+
+const simpleElimination = (candidates) => {
+  for (let i = 0; i < candidates.length; i++) {
+    if (candidates.length === 1) {
+      const value = candidates[i][0];
+
+      const col = i % cellsInColumn;
+      const row = Math.floor(i / cellsInRow);
+
+      // remove from row
+      for (let j = 0; j < cellsInRow; j++) {
+        const index = row * cellsInRow + j;
+        const indexInCandidates = candidates[index].indexOf(value);
+
+        if (index !== i && indexInCandidates !== -1) {
+          candidates[index].splice(indexInCandidates, 1);
+        }
+      }
+
+      // remove from col
+      for (let j = 0; j < cellsInColumn; j++) {
+        const index = col + j * cellsInColumn;
+        const indexInCandidates = candidates[index].indexOf(value);
+
+        if (index !== i && indexInCandidates !== -1) {
+          candidates[index].splice(indexInCandidates, 1);
+        }
+      }
+
+      // remove from box
+      const boxStartRow = Math.floor(row / 3) * 3;
+      const boxStartCol = Math.floor(col / 3) * 3;
+      const boxEndRow = boxStartRow + 3;
+      const boxEndCol = boxStartCol + 3;
+
+      for (let j = boxStartRow; j < boxEndRow; j++) {
+        for (let k = boxStartCol; k < boxEndCol; k++) {
+          const index = j * cellsInRow + k;
+          const indexInCandidates = candidates[index].indexOf(value);
+
+          if (index !== i && indexInCandidates !== -1) {
+            candidates[index].splice(indexInCandidates, 1);
+          }
+        }
+      }
+    }
+  }
+};
+
+const toCandidates = (cells) => {
+  const candidates = [];
+
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] !== null) {
+      candidates[i] = [cells[i]];
+    } else {
+      candidates[i] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    }
+  }
+
+  return candidates;
+};
+
+const toValues = (candidates) => {
+  const values = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    if (candidates[i].length === 1) {
+      values[i] = candidates[i][0];
+    } else {
+      values[i] = null;
+    }
+  }
+
+  return values;
+};
+
+const solve = (rules, meta, cells) => {
+  const candidates = toCandidates(cells);
+
   let result;
   do {
-    result = findHiddenSingle(solved)
-          || findNakedSingle(solved);
+    // TODO simpleElimination and intersection eliminate candidates,
+    // need an indication of whether the candidates changed
+    // to know if we need to run them again
+    // findHiddenSingle and findNakedSingle should not dictate whether to continue the loop
+    simpleElimination(candidates);
+    intersection(candidates);
+
+    result = findHiddenSingle(candidates)
+          || findNakedSingle(candidates);
 
     if (result) {
-      solved[result.index] = result.value;
+      candidates[result.index] = [result.value];
     }
   } while (result);
+
+  const solved = toValues(candidates);
 
   backtrack(rules, meta, solved);
 
